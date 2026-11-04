@@ -87,3 +87,25 @@ def test_multiple_sources_and_first_matching_guard_wins():
     m.add_transition("next", "yellow", "red")
 
     assert [m.trigger("next") for _ in range(3)] == ["green", "yellow", "red"]
+
+
+def test_on_transition_listener_fires_for_every_move():
+    seen = []
+    m = StateMachine(initial="red")
+    m.add_transition("next", "red", "green")
+    m.add_transition("next", "green", "yellow")
+    m.on_transition(lambda e: seen.append((e.source, e.dest)))
+
+    m.trigger("next")
+    m.trigger("next")
+    assert seen == [("red", "green"), ("green", "yellow")]
+
+
+def test_on_transition_listener_skipped_on_failed_trigger():
+    seen = []
+    m = StateMachine(initial="a")
+    m.add_transition("go", "a", "b")
+    m.on_transition(lambda e: seen.append(e.trigger))
+    with pytest.raises(TransitionError):
+        m.trigger("missing")
+    assert seen == []

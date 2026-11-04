@@ -55,12 +55,22 @@ class StateMachine:
     def __init__(self, initial: str) -> None:
         self._states: dict[str, _State] = {}
         self._transitions: list[_Transition] = []
+        self._listeners: list[Callback] = []
         self._state = initial
         self.add_state(initial)
 
     @property
     def state(self) -> str:
         return self._state
+
+    def on_transition(self, callback: Callback) -> StateMachine:
+        """Register a callback fired after every successful transition, with the EventData.
+
+        Unlike per-state ``on_enter``/``on_exit`` or per-transition actions, a listener sees
+        *every* move — handy for logging, metrics or persisting the machine's state.
+        """
+        self._listeners.append(callback)
+        return self
 
     # -- declaration ---------------------------------------------------------
 
@@ -122,6 +132,8 @@ class StateMachine:
         self._state = transition.dest
         for callback in self._states[self._state].on_enter:
             callback(event)
+        for listener in self._listeners:
+            listener(event)
         return self._state
 
     def _resolve(self, trigger: str, kwargs: dict[str, Any]) -> tuple[_Transition, EventData] | None:
